@@ -21,14 +21,14 @@ const EVENT_DATES = [
     number: "12",
     variant: "conference",
   },
-  {
-    label: "Launch date",
-    day: "Sunday",
-    date: "16 August",
-    year: "2026",
-    number: "16",
-    variant: "launch",
-  },
+  // {
+  //   label: "Launch date",
+  //   day: "Sunday",
+  //   date: "16 August",
+  //   year: "2026",
+  //   number: "16",
+  //   variant: "launch",
+  // },
 ] as const;
 
 const CONFERENCE_VALUES = ["Inspire", "Equip", "Empower", "Transform"];
