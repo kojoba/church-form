@@ -1,14 +1,21 @@
 :root {
-  --ink: #111411;
-  --ink-soft: #313630;
-  --paper: #f4f0e7;
-  --paper-deep: #e9e2d5;
-  --acid: #d7ff45;
-  --coral: #ff795c;
-  --sage: #a5b8a2;
-  --line: rgba(17, 20, 17, 0.16);
-  --muted: #777d74;
-  --white: #fffdf7;
+  --navy: #071957;
+  --blue: #0756c9;
+  --royal: #244de1;
+  --cyan: #20d5f5;
+  --purple: #7134d4;
+  --magenta: #c42cda;
+
+  --ink: var(--navy);
+  --ink-soft: #1a3476;
+  --paper: #f7f9ff;
+  --paper-deep: #e9efff;
+  --acid: var(--cyan);
+  --coral: var(--purple);
+  --sage: #8aa8e8;
+  --line: rgba(7, 25, 87, 0.14);
+  --muted: #65729c;
+  --white: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -911,6 +918,103 @@ td:first-child { display: flex; align-items: center; gap: 11px; }
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 15px 5px 15px 5px;
+  background: linear-gradient(135deg, var(--cyan), var(--blue) 45%, var(--purple));
+  color: white;
+  font-weight: 850;
+  font-size: 14px;
+  letter-spacing: -0.08em;
+  box-shadow: 0 9px 24px rgba(36, 77, 225, 0.25);
+}
+
+.live-dot {
+  background: var(--cyan);
+  box-shadow: 0 0 0 5px rgba(32, 213, 245, 0.15);
+}
+
+.story-panel,
+.login-story {
+  background:
+    radial-gradient(circle at 85% 18%, rgba(32, 213, 245, 0.24), transparent 24%),
+    radial-gradient(circle at 15% 88%, rgba(196, 44, 218, 0.25), transparent 28%),
+    linear-gradient(145deg, #061545 0%, #063ba8 53%, #4e1ca7 100%);
+}
+
+.orb-one {
+  border-color: var(--cyan);
+  opacity: 0.45;
+}
+
+.orb-two {
+  background: var(--magenta);
+  opacity: 0.45;
+}
+
+.conference-greeting {
+  margin: 0 0 18px !important;
+  color: var(--cyan) !important;
+  font-size: 13px !important;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.story-copy h1 {
+  font-size: clamp(48px, 5.5vw, 86px);
+  line-height: 0.92;
+}
+
+.story-copy h1 em {
+  color: var(--cyan);
+  font-family: inherit;
+  font-weight: 760;
+  font-style: normal;
+}
+
+.conference-intro {
+  max-width: 540px !important;
+  margin-top: 27px !important;
+}
+
+.event-dates {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.event-card {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(
+    110deg,
+    rgba(0, 92, 218, 0.94),
+    rgba(22, 74, 209, 0.84)
+  );
+  box-shadow: 0 16px 38px rgba(0, 10, 55, 0.22);
+}
+
+.event-card.launch {
+  background: linear-gradient(
+    110deg,
+    rgba(73, 24, 166, 0.96),
+    rgba(151, 30, 212, 0.88)
+  );
+}
+
+.event-date-number {
+  width: 57px;
+  height: 57px;
+  display: grid;
 
 @keyframes spin { to { transform: rotate(360deg); } }
 

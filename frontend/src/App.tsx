@@ -12,6 +12,27 @@ const EDUCATION_LEVELS = [
   { value: "Graduate", short: "GR", number: "04" },
 ] as const;
 
+const EVENT_DATES = [
+  {
+    label: "Conference date",
+    day: "Saturday",
+    date: "12 September",
+    year: "2026",
+    number: "12",
+    variant: "conference",
+  },
+  {
+    label: "Launch date",
+    day: "Sunday",
+    date: "16 August",
+    year: "2026",
+    number: "16",
+    variant: "launch",
+  },
+] as const;
+
+const CONFERENCE_VALUES = ["Inspire", "Equip", "Empower", "Transform"];
+
 type FormState = {
   full_name: string;
   date_of_birth: string;
@@ -84,7 +105,7 @@ export default function Home() {
         form.contact_number,
         form.education_level,
       ].filter(Boolean).length,
-    [form]
+    [form],
   );
 
   const progress = Math.round((completedFields / 4) * 100);
@@ -119,19 +140,21 @@ export default function Home() {
         throw new Error(
           (firstFieldError as string) ||
             payload.message ||
-            "We could not save your details."
+            "We could not save your details.",
         );
       }
 
       setStatus("success");
-      setMessage("Your details have been received. Welcome to the family.");
+      setMessage(
+        "Registration received. We look forward to welcoming you to FGC 2026.",
+      );
       setForm(EMPTY_FORM);
     } catch (error) {
       setStatus("error");
       setMessage(
         error instanceof Error
           ? error.message
-          : "Something went wrong. Please try again."
+          : "Something went wrong. Please try again.",
       );
     }
   }
@@ -164,9 +187,7 @@ export default function Home() {
       setMembers(payload.data ?? []);
     } catch (error) {
       setLoginMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to retrieve members."
+        error instanceof Error ? error.message : "Unable to retrieve members.",
       );
     } finally {
       setMembersLoading(false);
@@ -200,13 +221,14 @@ export default function Home() {
     } catch (error) {
       setLoginStatus("error");
       setLoginMessage(
-        error instanceof Error ? error.message : "Unable to sign in."
+        error instanceof Error ? error.message : "Unable to sign in.",
       );
     }
   }
 
   function openAdmin() {
-    const savedToken = token || sessionStorage.getItem("church_admin_token") || "";
+    const savedToken =
+      token || sessionStorage.getItem("church_admin_token") || "";
 
     if (savedToken) {
       setToken(savedToken);
@@ -253,22 +275,24 @@ export default function Home() {
         <a
           className="brand"
           href="#top"
-          aria-label="Church Connect home"
+          aria-label="Future Generation Conference home"
           onClick={() => setView("register")}
         >
           <span className="brand-mark" aria-hidden="true">
-            <span />
-            <span />
+            FG
           </span>
+
           <span>
-            <strong>Church</strong>
-            <em>Connect</em>
+            <strong>Future Generation</strong>
+            <em>Conference 2026</em>
           </span>
         </a>
 
         <div className="header-note">
           <span className="live-dot" />
-          {view === "register" ? "New member registration" : "Administrator workspace"}
+          {view === "register"
+            ? "Conference registration now open"
+            : "FGC administrator workspace"}
         </div>
 
         <button
@@ -282,193 +306,242 @@ export default function Home() {
       </header>
 
       {view === "register" && (
-      <section className="registration-layout" id="top">
-        <aside className="story-panel">
-          <div className="orb orb-one" />
-          <div className="orb orb-two" />
+        <section className="registration-layout" id="top">
+          <aside className="story-panel">
+            <div className="orb orb-one" />
+            <div className="orb orb-two" />
 
-          <p className="eyebrow">
-            <span>01</span> A place to belong
-          </p>
-
-          <div className="story-copy">
-            <h1>
-              More than
-              <br />
-              a name on
-              <br />
-              <em>a list.</em>
-            </h1>
-            <p>
-              Every person carries a story. Share a few details so we can know
-              you, support you, and help you find your place in our community.
+            <p className="eyebrow">
+              <span>FG</span> Future Generation Conference
             </p>
-          </div>
 
-          <div className="story-footer">
-            <div className="people-stack" aria-hidden="true">
-              <span>AM</span>
-              <span>KO</span>
-              <span>YA</span>
-              <span>+</span>
-            </div>
-            <p>
-              Growing together
-              <strong>One family, many stories</strong>
-            </p>
-          </div>
-        </aside>
+            <div className="story-copy">
+              <p className="conference-greeting">Hello FGC family,</p>
 
-        <section className="form-panel" aria-labelledby="form-title">
-          <div className="form-heading">
-            <div>
-              <p className="section-kicker">Member details</p>
-              <h2 id="form-title">Let&apos;s get to know you.</h2>
-            </div>
+              <h1>
+                One vision.
+                <br />
+                One purpose.
+                <br />
+                <em>One generation.</em>
+              </h1>
 
-            <div
-              className="progress-ring"
-              style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}
-              aria-label={`${progress}% complete`}
-            >
-              <span>{progress}%</span>
-            </div>
-          </div>
+              <p className="conference-intro">
+                Join a generation prepared to inspire, equip, empower and
+                transform. Register your details for the Future Generation
+                Conference 2026.
+              </p>
 
-          <form onSubmit={submitForm} className="member-form">
-            <div className="field-grid">
-              <label className="field field-wide">
-                <span className="field-label">
-                  Full name <b>Required</b>
-                </span>
-                <span className="input-wrap">
-                  <input
-                    type="text"
-                    value={form.full_name}
-                    onChange={(event) =>
-                      updateField("full_name", event.target.value)
-                    }
-                    placeholder="e.g. Ama Serwaa Boateng"
-                    minLength={2}
-                    autoComplete="name"
-                    required
-                  />
-                  <span className="input-index">01</span>
-                </span>
-              </label>
-
-              <label className="field">
-                <span className="field-label">
-                  Date of birth <b>Required</b>
-                </span>
-                <span className="input-wrap">
-                  <input
-                    type="date"
-                    value={form.date_of_birth}
-                    max={today}
-                    onChange={(event) =>
-                      updateField("date_of_birth", event.target.value)
-                    }
-                    required
-                  />
-                  <span className="input-index">02</span>
-                </span>
-              </label>
-
-              <label className="field">
-                <span className="field-label">
-                  Contact number <b>Required</b>
-                </span>
-                <span className="input-wrap">
-                  <input
-                    type="tel"
-                    value={form.contact_number}
-                    onChange={(event) =>
-                      updateField("contact_number", event.target.value)
-                    }
-                    placeholder="024 123 4567"
-                    autoComplete="tel"
-                    required
-                  />
-                  <span className="input-index">03</span>
-                </span>
-              </label>
-
-              <label className="field field-wide">
-                <span className="field-label">
-                  Email address <i>Optional</i>
-                </span>
-                <span className="input-wrap">
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(event) =>
-                      updateField("email", event.target.value)
-                    }
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                  />
-                  <span className="input-index">04</span>
-                </span>
-              </label>
-            </div>
-
-            <fieldset className="education-field">
-              <legend>
-                <span>Highest level of education</span>
-                <b>Choose one</b>
-              </legend>
-
-              <div className="education-options">
-                {EDUCATION_LEVELS.map((level) => (
-                  <label
-                    className={`education-option ${
-                      form.education_level === level.value ? "selected" : ""
-                    }`}
-                    key={level.value}
+              <div className="event-dates">
+                {EVENT_DATES.map((event) => (
+                  <article
+                    className={`event-card ${event.variant}`}
+                    key={event.label}
                   >
+                    <span className="event-date-number" aria-hidden="true">
+                      {event.number}
+                    </span>
+
+                    <div>
+                      <small>{event.label}</small>
+                      <strong>
+                        {event.day}, {event.date}
+                      </strong>
+                      <b>{event.year}</b>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="conference-note">
+                <span aria-hidden="true">↗</span>
+
+                <p>
+                  <strong>Department preparation</strong>
+                  Departments are encouraged to begin preparations and submit
+                  their proposed budgets ahead of the conference.
+                </p>
+              </div>
+            </div>
+
+            <div className="story-footer fgc-footer">
+              <div className="conference-values">
+                {CONFERENCE_VALUES.map((value, index) => (
+                  <span key={value}>
+                    <b>{String(index + 1).padStart(2, "0")}</b>
+                    {value}
+                  </span>
+                ))}
+              </div>
+
+              <p>
+                Inspire today. Empower tomorrow.
+                <strong>FGC 2026</strong>
+              </p>
+            </div>
+          </aside>
+
+          <section className="form-panel" aria-labelledby="form-title">
+            <div className="form-heading">
+              <div>
+                <p className="section-kicker">Conference registration</p>
+                <h2 id="form-title">Reserve your place at FGC 2026.</h2>
+              </div>
+
+              <div
+                className="progress-ring"
+                style={
+                  {
+                    "--progress": `${progress * 3.6}deg`,
+                  } as React.CSSProperties
+                }
+                aria-label={`${progress}% complete`}
+              >
+                <span>{progress}%</span>
+              </div>
+            </div>
+
+            <form onSubmit={submitForm} className="member-form">
+              <div className="field-grid">
+                <label className="field field-wide">
+                  <span className="field-label">
+                    Full name <b>Required</b>
+                  </span>
+                  <span className="input-wrap">
                     <input
-                      type="radio"
-                      name="education_level"
-                      value={level.value}
-                      checked={form.education_level === level.value}
+                      type="text"
+                      value={form.full_name}
                       onChange={(event) =>
-                        updateField("education_level", event.target.value)
+                        updateField("full_name", event.target.value)
+                      }
+                      placeholder="e.g. Ama Serwaa Boateng"
+                      minLength={2}
+                      autoComplete="name"
+                      required
+                    />
+                    <span className="input-index">01</span>
+                  </span>
+                </label>
+
+                <label className="field">
+                  <span className="field-label">
+                    Date of birth <b>Required</b>
+                  </span>
+                  <span className="input-wrap">
+                    <input
+                      type="date"
+                      value={form.date_of_birth}
+                      max={today}
+                      onChange={(event) =>
+                        updateField("date_of_birth", event.target.value)
                       }
                       required
                     />
-                    <span className="education-number">{level.number}</span>
-                    <strong>{level.short}</strong>
-                    <small>{level.value}</small>
-                    <span className="education-check">✓</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+                    <span className="input-index">02</span>
+                  </span>
+                </label>
 
-            {message && (
-              <div
-                className={`form-message ${status}`}
-                role={status === "error" ? "alert" : "status"}
-              >
-                <span aria-hidden="true">{status === "success" ? "✓" : "!"}</span>
-                {message}
-              </div>
-            )}
+                <label className="field">
+                  <span className="field-label">
+                    Contact number <b>Required</b>
+                  </span>
+                  <span className="input-wrap">
+                    <input
+                      type="tel"
+                      value={form.contact_number}
+                      onChange={(event) =>
+                        updateField("contact_number", event.target.value)
+                      }
+                      placeholder="024 123 4567"
+                      autoComplete="tel"
+                      required
+                    />
+                    <span className="input-index">03</span>
+                  </span>
+                </label>
 
-            <div className="form-actions">
-              <p>
-                By submitting, you agree that these details may be used for
-                church communication and member care.
-              </p>
-              <button type="submit" disabled={status === "submitting"}>
-                <span>{status === "submitting" ? "Sending…" : "Join the family"}</span>
-                <i aria-hidden="true">→</i>
-              </button>
-            </div>
-          </form>
+                <label className="field field-wide">
+                  <span className="field-label">
+                    Email address <i>Optional</i>
+                  </span>
+                  <span className="input-wrap">
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(event) =>
+                        updateField("email", event.target.value)
+                      }
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                    />
+                    <span className="input-index">04</span>
+                  </span>
+                </label>
+              </div>
+
+              <fieldset className="education-field">
+                <legend>
+                  <span>Highest level of education</span>
+                  <b>Choose one</b>
+                </legend>
+
+                <div className="education-options">
+                  {EDUCATION_LEVELS.map((level) => (
+                    <label
+                      className={`education-option ${
+                        form.education_level === level.value ? "selected" : ""
+                      }`}
+                      key={level.value}
+                    >
+                      <input
+                        type="radio"
+                        name="education_level"
+                        value={level.value}
+                        checked={form.education_level === level.value}
+                        onChange={(event) =>
+                          updateField("education_level", event.target.value)
+                        }
+                        required
+                      />
+                      <span className="education-number">{level.number}</span>
+                      <strong>{level.short}</strong>
+                      <small>{level.value}</small>
+                      <span className="education-check">✓</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {message && (
+                <div
+                  className={`form-message ${status}`}
+                  role={status === "error" ? "alert" : "status"}
+                >
+                  <span aria-hidden="true">
+                    {status === "success" ? "✓" : "!"}
+                  </span>
+                  {message}
+                </div>
+              )}
+
+              <div className="form-actions">
+                <p>
+                  Your details will be used for conference communication,
+                  planning and participant coordination.
+                </p>
+
+                <button type="submit" disabled={status === "submitting"}>
+                  <span>
+                    {status === "submitting"
+                      ? "Registering…"
+                      : "Register for FGC"}
+                  </span>
+                  <i aria-hidden="true">→</i>
+                </button>
+              </div>
+            </form>
+          </section>
         </section>
-      </section>
       )}
 
       {view === "login" && (
@@ -479,11 +552,12 @@ export default function Home() {
               <span>02</span> Private workspace
             </p>
             <div>
-              <p className="login-overline">Member care desk</p>
+              <p className="login-overline">FGC coordination desk</p>
+
               <h1>
-                Know the flock.
+                Plan with clarity.
                 <br />
-                <em>Care with clarity.</em>
+                <em>Empower a generation.</em>
               </h1>
               <p className="login-description">
                 Sign in to view the people who have shared their details with
@@ -502,8 +576,8 @@ export default function Home() {
           <section className="login-panel" aria-labelledby="login-title">
             <form className="login-card" onSubmit={submitLogin}>
               <div className="login-card-number">CC / 02</div>
-              <p className="section-kicker">Administrator access</p>
-              <h2 id="login-title">Welcome back.</h2>
+              <p className="section-kicker">FGC coordination desk</p>
+              <h1>Conference registrations</h1>
               <p className="login-intro">
                 Enter the fixed administrator credentials configured in your
                 backend environment file.
@@ -555,7 +629,9 @@ export default function Home() {
                 disabled={loginStatus === "submitting"}
               >
                 <span>
-                  {loginStatus === "submitting" ? "Signing in…" : "Enter dashboard"}
+                  {loginStatus === "submitting"
+                    ? "Signing in…"
+                    : "Enter dashboard"}
                 </span>
                 <i aria-hidden="true">→</i>
               </button>
@@ -573,7 +649,7 @@ export default function Home() {
           <div className="dashboard-topbar">
             <div>
               <p className="section-kicker">Member care desk</p>
-              <h1>People directory</h1>
+              <h2>Registered participants</h2>
             </div>
             <div className="dashboard-actions">
               <button type="button" onClick={() => void loadMembers(token)}>
@@ -587,7 +663,9 @@ export default function Home() {
 
           <div className="stats-grid">
             <article className="stat-card stat-primary">
-              <span className="stat-number">{members.length.toString().padStart(2, "0")}</span>
+              <span className="stat-number">
+                {members.length.toString().padStart(2, "0")}
+              </span>
               <div>
                 <p>Total registrations</p>
                 <small>All submitted member forms</small>
@@ -595,7 +673,9 @@ export default function Home() {
               <b>01</b>
             </article>
             <article className="stat-card">
-              <span className="stat-number">{membersWithEmail.toString().padStart(2, "0")}</span>
+              <span className="stat-number">
+                {membersWithEmail.toString().padStart(2, "0")}
+              </span>
               <div>
                 <p>Email available</p>
                 <small>Members reachable by email</small>
@@ -604,8 +684,9 @@ export default function Home() {
             </article>
             <article className="stat-card stat-acid">
               <span className="stat-number">
-                {members.filter((member) => member.education_level === "Graduate").length
-                  .toString()
+                {members
+                  .filter((member) => member.education_level === "Graduate")
+                  .length.toString()
                   .padStart(2, "0")}
               </span>
               <div>
@@ -675,18 +756,26 @@ export default function Home() {
                     {filteredMembers.map((member) => (
                       <tr key={member.id}>
                         <td data-label="Member">
-                          <span className="member-avatar">{initials(member.full_name)}</span>
+                          <span className="member-avatar">
+                            {initials(member.full_name)}
+                          </span>
                           <span className="member-identity">
                             <strong>{member.full_name}</strong>
                             <small>{member.email || "No email provided"}</small>
                           </span>
                         </td>
                         <td data-label="Contact">{member.contact_number}</td>
-                        <td data-label="Date of birth">{formatDate(member.date_of_birth)}</td>
-                        <td data-label="Education">
-                          <span className="education-badge">{member.education_level}</span>
+                        <td data-label="Date of birth">
+                          {formatDate(member.date_of_birth)}
                         </td>
-                        <td data-label="Joined">{formatDate(member.created_at.slice(0, 10))}</td>
+                        <td data-label="Education">
+                          <span className="education-badge">
+                            {member.education_level}
+                          </span>
+                        </td>
+                        <td data-label="Joined">
+                          {formatDate(member.created_at.slice(0, 10))}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -698,8 +787,8 @@ export default function Home() {
       )}
 
       <footer className="site-footer">
-        <p>Church Connect · Member care, thoughtfully organised.</p>
-        <p>Private by design · Built for community</p>
+        <p>Future Generation Conference. &copy; 2026</p>
+        <p>Designed by · Kojo</p>
       </footer>
     </main>
   );
