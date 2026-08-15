@@ -335,25 +335,21 @@ export default function Home() {
               <div className="event-dates">
                 {EVENT_DATES.map((event) => (
                   <article
-                    className={`event-card ${event.variant}`}
+                    className={`event-date-item ${event.variant}`}
                     key={event.label}
                   >
-                    <span className="event-date-number" aria-hidden="true">
-                      {event.number}
-                    </span>
+                    <small>{event.label}</small>
 
-                    <div>
-                      <small>{event.label}</small>
-                      <strong>
-                        {event.day}, {event.date}
-                      </strong>
+                    <p>
+                      <strong>{event.day}</strong>
+                      <span>{event.date}</span>
                       <b>{event.year}</b>
-                    </div>
+                    </p>
                   </article>
                 ))}
               </div>
 
-              <div className="conference-note">
+              {/* <div className="conference-note">
                 <span aria-hidden="true">↗</span>
 
                 <p>
@@ -361,7 +357,7 @@ export default function Home() {
                   Departments are encouraged to begin preparations and submit
                   their proposed budgets ahead of the conference.
                 </p>
-              </div>
+              </div> */}
             </div>
 
             <div className="story-footer fgc-footer">
