@@ -278,11 +278,13 @@ export default function Home() {
           aria-label="Future Generation Conference home"
           onClick={() => setView("register")}
         >
-          <span className="brand-mark" aria-hidden="true">
-            FG
-          </span>
+          <img
+            className="brand-logo"
+            src="/fgc-logo.jpeg"
+            alt="Future Generation Conference"
+          />
 
-          <span>
+          <span className="brand-name">
             <strong>Future Generation</strong>
             <em>Conference 2026</em>
           </span>
