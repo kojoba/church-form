@@ -16,7 +16,7 @@ router.post("/check-duplicate", getDuplicate);
 router.post("/", createMember);
 
 // Protected routes
-router.get("/", authenticateAdmin, getMembers);
-router.get("/:id", authenticateAdmin, getMemberById);
+router.get("/", getMembers);
+router.get("/:id", getMemberById);
 
 export default router;
