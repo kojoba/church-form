@@ -7,35 +7,37 @@ const EDUCATION_LEVELS = [
   "Graduate",
 ];
 
-function normalizeMember(body) {
-  const email =
-    typeof body.email === "string"
-      ? body.email.trim().toLowerCase()
-      : "";
+function normalizeName(value = "") {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
-  return {
-    full_name:
-      typeof body.full_name === "string"
-        ? body.full_name.trim()
-        : "",
+function normalizePhone(value = "") {
+  let phone = value.replace(/\D/g, "");
 
-    date_of_birth:
-      typeof body.date_of_birth === "string"
-        ? body.date_of_birth.trim()
-        : "",
+  if (phone.startsWith("00233")) {
+    phone = phone.slice(2);
+  }
 
-    contact_number:
-      typeof body.contact_number === "string"
-        ? body.contact_number.trim()
-        : "",
+  if (phone.startsWith("0") && phone.length === 10) {
+    phone = `233${phone.slice(1)}`;
+  }
 
-    email: email || null,
+  return phone;
+}
 
-    education_level:
-      typeof body.education_level === "string"
-        ? body.education_level.trim()
-        : "",
-  };
+function normalizeEmail(value = "") {
+  const email = value.trim().toLowerCase();
+  return email || null;
+}
+
+function sameName(firstName, secondName) {
+  return (
+    normalizeName(firstName).toLowerCase() ===
+    normalizeName(secondName).toLowerCase()
+  );
 }
 
 function isValidDate(dateValue) {
@@ -103,39 +105,137 @@ function validateMember(member) {
 // POST /api/members
 export async function createMember(req, res) {
   try {
-    const member = normalizeMember(req.body);
-    const validationErrors = validateMember(member);
+    const memberData = {
+      full_name: normalizeName(req.body.full_name),
+      date_of_birth: req.body.date_of_birth,
+      contact_number: normalizePhone(req.body.contact_number),
+      email: normalizeEmail(req.body.email),
+      education_level: req.body.education_level,
+    };
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (
+      !memberData.full_name ||
+      !memberData.date_of_birth ||
+      !memberData.contact_number ||
+      !memberData.education_level
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Validation failed.",
-        errors: validationErrors,
+        message: "Please complete all required fields.",
+      });
+    }
+
+    /*
+     * Find possible duplicates using date of birth and phone.
+     * Compare the normalized names afterwards.
+     */
+    const { data: possibleDuplicates, error: checkError } = await supabase
+      .from("church_members")
+      .select("id, full_name")
+      .eq("date_of_birth", memberData.date_of_birth)
+      .eq("contact_number", memberData.contact_number)
+      .limit(10);
+
+    if (checkError) {
+      throw checkError;
+    }
+
+    const duplicateExists = (possibleDuplicates ?? []).some((member) =>
+      sameName(member.full_name, memberData.full_name)
+    );
+
+    if (duplicateExists) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "You have already registered for FGC 2026. You do not need to register again.",
       });
     }
 
     const { data, error } = await supabase
       .from("church_members")
-      .insert(member)
+      .insert(memberData)
       .select()
       .single();
 
     if (error) {
+      const errorInformation = [
+        error.code,
+        error.message,
+        error.details,
+      ].join(" ");
+
+      if (
+        error.code === "23505" ||
+        errorInformation.includes("church_members_unique_person")
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "You have already registered for FGC 2026. You do not need to register again.",
+        });
+      }
+
       throw error;
     }
 
     return res.status(201).json({
       success: true,
-      message: "Church form submitted successfully.",
+      message: "Registration completed successfully.",
       data,
     });
   } catch (error) {
-    console.error("Create member error:", error.message);
+    console.error("Member registration error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Unable to submit church form.",
-      error: error.message,
+      message: "Unable to complete the registration.",
+    });
+  }
+}
+
+export async function getDuplicate(req, res){
+    try {
+    const fullName = normalizeName(req.body.full_name);
+    const dateOfBirth = req.body.date_of_birth;
+    const contactNumber = normalizePhone(req.body.contact_number);
+
+    if (!fullName || !dateOfBirth || !contactNumber) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Name, date of birth and contact number are required for the check.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("church_members")
+      .select("id, full_name")
+      .eq("date_of_birth", dateOfBirth)
+      .eq("contact_number", contactNumber)
+      .limit(10);
+
+    if (error) {
+      throw error;
+    }
+
+    const duplicate = (data ?? []).some((member) =>
+      sameName(member.full_name, fullName)
+    );
+
+    return res.status(200).json({
+      success: true,
+      duplicate,
+      message: duplicate
+        ? "You have already registered for FGC 2026."
+        : "No existing registration was found.",
+    });
+  } catch (error) {
+    console.error("Duplicate check error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to check the registration details.",
     });
   }
 }
