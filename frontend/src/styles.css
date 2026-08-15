@@ -1015,7 +1015,7 @@ td:first-child { display: flex; align-items: center; gap: 11px; }
   width: 57px;
   height: 57px;
   display: grid;
-
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 1080px) {
