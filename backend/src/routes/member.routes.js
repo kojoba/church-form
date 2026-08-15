@@ -7,7 +7,7 @@ import {
   getDuplicate,
 } from "../controllers/member.controller.js";
 
-import { authenticateToken } from "../middleware/auth.middleware.js";
+import { authenticateAdmin } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.post("/check-duplicate", getDuplicate);
 router.post("/", createMember);
 
 // Protected routes
-router.get("/", authenticateToken, getMembers);
-router.get("/:id", authenticateToken, getMemberById);
+router.get("/", authenticateAdmin, getMembers);
+router.get("/:id", authenticateAdmin, getMemberById);
 
 export default router;
