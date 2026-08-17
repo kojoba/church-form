@@ -5,6 +5,8 @@ const EDUCATION_LEVELS = [
   "Senior High",
   "Undergraduate",
   "Graduate",
+  "Professionals",
+  "Young Professionals"
 ];
 
 function normalizeName(value = "") {
@@ -95,8 +97,9 @@ function validateMember(member) {
   }
 
   if (!EDUCATION_LEVELS.includes(member.education_level)) {
-    errors.education_level =
-      "Education level must be Junior High, Senior High, Undergraduate, or Graduate.";
+    errors.education_level = `Education level must be one of the following: ${EDUCATION_LEVELS.join(
+        ", "
+    )}.`;
   }
 
   return errors;
@@ -110,18 +113,16 @@ export async function createMember(req, res) {
       date_of_birth: req.body.date_of_birth,
       contact_number: normalizePhone(req.body.contact_number),
       email: normalizeEmail(req.body.email),
-      education_level: req.body.education_level,
+      education_level: req.body.education_level?.trim(),
     };
 
-    if (
-      !memberData.full_name ||
-      !memberData.date_of_birth ||
-      !memberData.contact_number ||
-      !memberData.education_level
-    ) {
+    const validationErrors = validateMember(memberData);
+
+    if (Object.keys(validationErrors).length > 0) {
       return res.status(400).json({
         success: false,
-        message: "Please complete all required fields.",
+        message: "Please correct the highlighted fields.",
+        errors: validationErrors,
       });
     }
 

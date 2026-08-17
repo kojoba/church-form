@@ -10,6 +10,8 @@ const EDUCATION_LEVELS = [
   { value: "Senior High", short: "SHS", number: "02" },
   { value: "Undergraduate", short: "UG", number: "03" },
   { value: "Graduate", short: "GR", number: "04" },
+  {value: "Professional", short: "P", number: "05"},
+  {value: "Young Professionals", short: "YP", number: "06"}
 ] as const;
 
 const EVENT_DATES = [
@@ -375,6 +377,13 @@ export default function Home() {
               <p>
                 Inspire today. Empower tomorrow.
                 <strong>FGC 2026</strong>
+              </p>
+
+              <p>
+                Contact Us.
+                <a href="mailto:futuregenerationconference@gmail.com"><strong>futuregenerationconference@gmail.com</strong></a>
+                <a href="tel:+233248254959"><strong>0248254859</strong></a>
+                <a href="tel:+233246462286"><strong>0246462286</strong></a>
               </p>
             </div>
           </aside>

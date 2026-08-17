@@ -321,7 +321,7 @@ button, a, input, label { -webkit-tap-highlight-color: transparent; }
 }
 .education-field { padding: 0; margin: 42px 0 0; border: 0; }
 .education-field legend { width: 100%; margin-bottom: 15px; }
-.education-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.education-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .education-option {
   min-height: 105px;
   position: relative;
