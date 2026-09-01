@@ -10,15 +10,15 @@ const EDUCATION_LEVELS = [
   { value: "Senior High", short: "SHS", number: "02" },
   { value: "Undergraduate", short: "UG", number: "03" },
   { value: "Graduate", short: "GR", number: "04" },
-  {value: "Professional", short: "P", number: "05"},
-  {value: "Young Professionals", short: "YP", number: "06"}
+  // {value: "Professional", short: "P", number: "05"},
+  {value: "Professionals", short: "P", number: "05"}
 ] as const;
 
 const EVENT_DATES = [
   {
     label: "Conference date",
     day: "Saturday",
-    date: "12 September",
+    date: "19 September",
     year: "2026",
     number: "12",
     variant: "conference",
