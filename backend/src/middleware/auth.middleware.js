@@ -1,24 +1,13 @@
 import jwt from "jsonwebtoken";
 import authConfig from "../config/auth.js";
 
-export function authenticateAdmin(req, res, next) {
-  const authorizationHeader = req.headers.authorization;
+export function authenticateToken(req, res, next) {
+  const authorizationHeader =
+    req.headers.authorization ?? "";
 
-  if (
-    !authorizationHeader ||
-    !authorizationHeader.startsWith("Bearer ")
-  ) {
-    return res.status(401).json({
-      success: false,
-      message: "Authentication token is required.",
-    });
-  }
+  const [scheme, token] = authorizationHeader.split(" ");
 
-  const token = authorizationHeader
-    .slice(7)
-    .trim();
-
-  if (!token) {
+  if (scheme !== "Bearer" || !token) {
     return res.status(401).json({
       success: false,
       message: "Authentication token is required.",
@@ -33,23 +22,25 @@ export function authenticateAdmin(req, res, next) {
         algorithms: ["HS256"],
         issuer: "church-form-backend",
         audience: "church-form-admin",
-        subject: "church-admin",
       }
     );
 
-    req.user = decoded;
-    next();
+    req.user = {
+      id: decoded.sub,
+      username: decoded.username,
+      role: decoded.role,
+    };
+
+    return next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Your login session has expired.",
-      });
-    }
+    const message =
+      error.name === "TokenExpiredError"
+        ? "Your session has expired. Please log in again."
+        : "Invalid authentication token.";
 
     return res.status(401).json({
       success: false,
-      message: "Invalid authentication token.",
+      message,
     });
   }
 }

@@ -61,6 +61,7 @@ export async function login(req, res) {
 
     const token = jwt.sign(
       {
+        id: admin.id,
         username: admin.username,
         role: admin.role,
       },
@@ -70,7 +71,7 @@ export async function login(req, res) {
         expiresIn: authConfig.jwtExpiresIn,
         issuer: "church-form-backend",
         audience: "church-form-admin",
-        subject: admin.id,
+        subject: String(admin.id),
       }
     );
 
@@ -95,3 +96,4 @@ export async function login(req, res) {
     });
   }
 }
+
