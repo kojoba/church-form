@@ -43,6 +43,13 @@ type FormState = {
   education_level: string;
 };
 
+type SeatAssignment = {
+  seat_code: string;
+  seat_group: string;
+  seat_number: number;
+  assigned_at: string;
+};
+
 type Member = {
   id: number;
   full_name: string;
@@ -51,6 +58,14 @@ type Member = {
   email: string | null;
   education_level: string;
   created_at: string;
+  seat?: SeatAssignment | SeatAssignment[] | null;
+};
+
+type AdminTab = "members" | "seating";
+
+type ReminderResult = {
+  status: "sending" | "sent" | "error";
+  message?: string;
 };
 
 type View = "register" | "login" | "dashboard";
@@ -98,6 +113,8 @@ export default function Home() {
   const [membersLoading, setMembersLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [educationFilter, setEducationFilter] = useState("All levels");
+  const [adminTab, setAdminTab] = useState<AdminTab>("members");
+  const [reminderResults, setReminderResults] = useState<Record<number, ReminderResult>>({});
 
   const completedFields = useMemo(
     () =>
@@ -120,6 +137,105 @@ export default function Home() {
       setMessage("");
     }
   }
+
+  function getMemberSeat(member: Member) {
+    if (Array.isArray(member.seat)) {
+      return member.seat[0] ?? null;
+    }
+
+    return member.seat ?? null;
+  }
+
+  const seatedMembers = useMemo(
+      () =>
+        members
+          .filter((member) => getMemberSeat(member)?.seat_code)
+          .sort((firstMember, secondMember) => {
+            const firstSeat = getMemberSeat(firstMember);
+            const secondSeat = getMemberSeat(secondMember);
+
+            return (firstSeat?.seat_code ?? "").localeCompare(
+              secondSeat?.seat_code ?? "",
+              undefined,
+              { numeric: true }
+            );
+          }),
+      [members]
+    );
+
+    async function sendReminder(member: Member) {
+      if (!member.email) {
+        return;
+      }
+
+      const accessToken =
+        token ||
+        sessionStorage.getItem("church_admin_token") ||
+        "";
+
+      if (!accessToken) {
+        setView("login");
+        return;
+      }
+
+      setReminderResults((current) => ({
+        ...current,
+        [member.id]: {
+          status: "sending",
+          message: "Sending reminder…",
+        },
+      }));
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/members/${member.id}/send-reminder`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        const payload = await response.json();
+
+        if (response.status === 401) {
+          sessionStorage.removeItem("church_admin_token");
+          setToken("");
+          setView("login");
+          setLoginStatus("error");
+          setLoginMessage(
+            "Your session has expired. Please sign in again."
+          );
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            payload.message || "Unable to send reminder."
+          );
+        }
+
+        setReminderResults((current) => ({
+          ...current,
+          [member.id]: {
+            status: "sent",
+            message: payload.message,
+          },
+        }));
+      } catch (error) {
+        setReminderResults((current) => ({
+          ...current,
+          [member.id]: {
+            status: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Unable to send reminder.",
+          },
+        }));
+      }
+    }
 
   async function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -668,128 +784,335 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="stats-grid">
-            <article className="stat-card stat-primary">
-              <span className="stat-number">
-                {members.length.toString().padStart(2, "0")}
-              </span>
-              <div>
-                <p>Total registrations</p>
-                <small>All submitted member forms</small>
-              </div>
-              <b>01</b>
-            </article>
-            <article className="stat-card">
-              <span className="stat-number">
-                {membersWithEmail.toString().padStart(2, "0")}
-              </span>
-              <div>
-                <p>Email available</p>
-                <small>Members reachable by email</small>
-              </div>
-              <b>02</b>
-            </article>
-            <article className="stat-card stat-acid">
-              <span className="stat-number">
-                {members
-                  .filter((member) => member.education_level === "Graduate")
-                  .length.toString()
-                  .padStart(2, "0")}
-              </span>
-              <div>
-                <p>Graduate members</p>
-                <small>Education snapshot</small>
-              </div>
-              <b>03</b>
-            </article>
+          <div className="admin-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={adminTab === "members"}
+              className={adminTab === "members" ? "active" : ""}
+              onClick={() => setAdminTab("members")}
+            >
+              Member records
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={adminTab === "seating"}
+              className={adminTab === "seating" ? "active" : ""}
+              onClick={() => setAdminTab("seating")}
+            >
+              Seating & reminders
+            </button>
           </div>
 
-          <div className="directory-panel">
-            <div className="directory-toolbar">
-              <div>
-                <h2>Member records</h2>
-                <p>{filteredMembers.length} visible records</p>
+          {adminTab === "members" && (
+            <>
+              <div className="stats-grid">
+                <article className="stat-card stat-primary">
+                  <span className="stat-number">
+                    {members.length.toString().padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p>Total registrations</p>
+                    <small>All submitted member forms</small>
+                  </div>
+                  <b>01</b>
+                </article>
+                <article className="stat-card">
+                  <span className="stat-number">
+                    {membersWithEmail.toString().padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p>Email available</p>
+                    <small>Members reachable by email</small>
+                  </div>
+                  <b>02</b>
+                </article>
+                <article className="stat-card stat-acid">
+                  <span className="stat-number">
+                    {members
+                      .filter((member) => member.education_level === "Graduate")
+                      .length.toString()
+                      .padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p>Graduate members</p>
+                    <small>Education snapshot</small>
+                  </div>
+                  <b>03</b>
+                </article>
               </div>
-              <div className="directory-filters">
-                <label className="search-box">
-                  <span aria-hidden="true">⌕</span>
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search name, phone or email"
-                    aria-label="Search members"
-                  />
-                </label>
-                <label className="filter-select">
-                  <span className="sr-only">Filter by education</span>
-                  <select
-                    value={educationFilter}
-                    onChange={(event) => setEducationFilter(event.target.value)}
+
+              <div className="directory-panel">
+                <div className="directory-toolbar">
+                  <div>
+                    <h2>Member records</h2>
+                    <p>{filteredMembers.length} visible records</p>
+                  </div>
+                  <div className="directory-filters">
+                    <label className="search-box">
+                      <span aria-hidden="true">⌕</span>
+                      <input
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search name, phone or email"
+                        aria-label="Search members"
+                      />
+                    </label>
+                    <label className="filter-select">
+                      <span className="sr-only">Filter by education</span>
+                      <select
+                        value={educationFilter}
+                        onChange={(event) => setEducationFilter(event.target.value)}
+                      >
+                        <option>All levels</option>
+                        {EDUCATION_LEVELS.map((level) => (
+                          <option key={level.value}>{level.value}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+
+                {membersLoading ? (
+                  <div className="directory-state">
+                    <span className="loading-mark" />
+                    Loading member records…
+                  </div>
+                ) : filteredMembers.length === 0 ? (
+                  <div className="directory-state">
+                    <span className="empty-mark">0</span>
+                    <strong>No matching members</strong>
+                    <p>Try changing your search or education filter.</p>
+                  </div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Member</th>
+                          <th>Contact</th>
+                          <th>Date of birth</th>
+                          <th>Education</th>
+                          <th>Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredMembers.map((member) => (
+                          <tr key={member.id}>
+                            <td data-label="Member">
+                              <span className="member-avatar">
+                                {initials(member.full_name)}
+                              </span>
+                              <span className="member-identity">
+                                <strong>{member.full_name}</strong>
+                                <small>{member.email || "No email provided"}</small>
+                              </span>
+                            </td>
+                            <td data-label="Contact">{member.contact_number}</td>
+                            <td data-label="Date of birth">
+                              {formatDate(member.date_of_birth)}
+                            </td>
+                            <td data-label="Education">
+                              <span className="education-badge">
+                                {member.education_level}
+                              </span>
+                            </td>
+                            <td data-label="Joined">
+                              {formatDate(member.created_at.slice(0, 10))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {view === "dashboard" && (
+            <section className="dashboard" id="admin">
+              {/* Dashboard heading */}
+              <div className="dashboard-topbar">
+                <div>
+                  <p className="section-kicker">Member care desk</p>
+                  <h2>Registered participants</h2>
+                </div>
+
+                <div className="dashboard-actions">
+                  <button
+                    type="button"
+                    onClick={() => void loadMembers(token)}
                   >
-                    <option>All levels</option>
-                    {EDUCATION_LEVELS.map((level) => (
-                      <option key={level.value}>{level.value}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </div>
+                    Refresh data
+                  </button>
 
-            {membersLoading ? (
-              <div className="directory-state">
-                <span className="loading-mark" />
-                Loading member records…
+                  <button
+                    className="logout-button"
+                    type="button"
+                    onClick={logout}
+                  >
+                    Sign out <span>↗</span>
+                  </button>
+                </div>
               </div>
-            ) : filteredMembers.length === 0 ? (
-              <div className="directory-state">
-                <span className="empty-mark">0</span>
-                <strong>No matching members</strong>
-                <p>Try changing your search or education filter.</p>
+
+              {/* Admin navigation tabs */}
+              <div className="admin-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={adminTab === "members"}
+                  className={adminTab === "members" ? "active" : ""}
+                  onClick={() => setAdminTab("members")}
+                >
+                  Member records
+                </button>
+
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={adminTab === "seating"}
+                  className={adminTab === "seating" ? "active" : ""}
+                  onClick={() => setAdminTab("seating")}
+                >
+                  Seating & reminders
+                </button>
               </div>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Member</th>
-                      <th>Contact</th>
-                      <th>Date of birth</th>
-                      <th>Education</th>
-                      <th>Joined</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredMembers.map((member) => (
-                      <tr key={member.id}>
-                        <td data-label="Member">
-                          <span className="member-avatar">
-                            {initials(member.full_name)}
-                          </span>
-                          <span className="member-identity">
-                            <strong>{member.full_name}</strong>
-                            <small>{member.email || "No email provided"}</small>
-                          </span>
-                        </td>
-                        <td data-label="Contact">{member.contact_number}</td>
-                        <td data-label="Date of birth">
-                          {formatDate(member.date_of_birth)}
-                        </td>
-                        <td data-label="Education">
-                          <span className="education-badge">
-                            {member.education_level}
-                          </span>
-                        </td>
-                        <td data-label="Joined">
-                          {formatDate(member.created_at.slice(0, 10))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+
+              {/* Existing member-records tab */}
+              {adminTab === "members" && (
+                <>
+                  <div className="stats-grid">
+                    {/* Move your three existing stat cards here */}
+                  </div>
+
+                  <div className="directory-panel">
+                    {/* Move your existing Member records table here */}
+                  </div>
+                </>
+              )}
+
+              {/* New seating and reminders tab */}
+              {adminTab === "seating" && (
+                <div className="directory-panel seating-panel">
+                  <div className="directory-toolbar">
+                    <div>
+                      <h2>Seating and reminders</h2>
+                      <p>
+                        {seatedMembers.length} assigned participants
+                      </p>
+                    </div>
+                  </div>
+
+                  {membersLoading ? (
+                    <div className="directory-state">
+                      Loading seat assignments…
+                    </div>
+                  ) : seatedMembers.length === 0 ? (
+                    <div className="directory-state">
+                      <strong>No seat assignments found</strong>
+                      <p>
+                        Confirm that the seat migration and database
+                        trigger have been created.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Participant</th>
+                            <th>Email address</th>
+                            <th>Education</th>
+                            <th>Seat code</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {seatedMembers.map((member) => {
+                            const seat = getMemberSeat(member);
+                            const reminder =
+                              reminderResults[member.id];
+
+                            return (
+                              <tr key={member.id}>
+                                <td data-label="Participant">
+                                  <span className="member-avatar">
+                                    {initials(member.full_name)}
+                                  </span>
+
+                                  <span className="member-identity">
+                                    <strong>
+                                      {member.full_name}
+                                    </strong>
+                                  </span>
+                                </td>
+
+                                <td data-label="Email">
+                                  {member.email ||
+                                    "No email provided"}
+                                </td>
+
+                                <td data-label="Education">
+                                  <span className="education-badge">
+                                    {member.education_level}
+                                  </span>
+                                </td>
+
+                                <td data-label="Seat code">
+                                  <strong className="seat-code">
+                                    {seat?.seat_code}
+                                  </strong>
+                                </td>
+
+                                <td data-label="Action">
+                                  <button
+                                    className="reminder-button"
+                                    type="button"
+                                    disabled={
+                                      !member.email ||
+                                      reminder?.status ===
+                                        "sending"
+                                    }
+                                    onClick={() =>
+                                      void sendReminder(member)
+                                    }
+                                  >
+                                    {!member.email
+                                      ? "No email"
+                                      : reminder?.status ===
+                                          "sending"
+                                        ? "Sending…"
+                                        : reminder?.status ===
+                                            "sent"
+                                          ? "Send again"
+                                          : "Send reminder"}
+                                  </button>
+
+                                  {reminder?.message && (
+                                    <small
+                                      className={`reminder-feedback ${reminder.status}`}
+                                    >
+                                      {reminder.message}
+                                    </small>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
         </section>
       )}
 
