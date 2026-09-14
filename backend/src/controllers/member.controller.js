@@ -1,5 +1,5 @@
 import supabase from "../config/supabase.js";
-import mailer from "../config/mailer.js";
+import {sendTransactionalEmail} from "../config/email.js";
 
 const EDUCATION_LEVELS = [
   "Junior High",
@@ -546,12 +546,18 @@ Regards,
 Future Generation Conference Team
 `.trim();
 
-    await mailer.sendMail({
-      from: process.env.MAIL_FROM,
+    const emailResult = await sendTransactionalEmail({
       to: member.email,
-      replyTo: process.env.SMTP_USER,
+      toName: member.full_name,
       subject: `FGC 2026 Reminder – ${seat.seat_code}`,
       text: reminderMessage,
+    });
+
+    console.log("Reminder email submitted:", {
+      memberId: member.id,
+      recipient: member.email,
+      seatCode: seat.seat_code,
+      messageId: emailResult.messageId,
     });
 
     return res.status(200).json({
@@ -560,12 +566,43 @@ Future Generation Conference Team
       seat_code: seat.seat_code,
       sent_to: member.email,
     });
-  } catch (error) {
-    console.error("Send reminder error:", error);
+    } catch (error) {
+      console.error("Send reminder error:", {
+        code: error.code,
+        message: error.message,
+        status: error.status,
+        details: error.details,
+        cause: error.cause,
+      });
 
-    return res.status(500).json({
-      success: false,
-      message: "Unable to send the reminder email.",
-    });
-  }
+      if (error.name === "TimeoutError") {
+        return res.status(503).json({
+          success: false,
+          message:
+            "The email provider took too long to respond. Please try again.",
+        });
+      }
+
+      if (error.code === "EMAIL_CONFIGURATION_ERROR") {
+        return res.status(500).json({
+          success: false,
+          message:
+            "The email service has not been configured correctly.",
+        });
+      }
+
+      if (error.code === "BREVO_API_ERROR") {
+        return res.status(502).json({
+          success: false,
+          message:
+            error.message ||
+            "The email provider rejected the reminder.",
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to send the reminder email.",
+      });
+    }
 }
