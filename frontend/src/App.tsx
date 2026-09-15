@@ -277,7 +277,6 @@ export default function Home() {
       );
 
       setForm(EMPTY_FORM);
-      setForm(EMPTY_FORM);
     } catch (error) {
       setStatus("error");
       setMessage(
@@ -944,69 +943,6 @@ export default function Home() {
             </>
           )}
 
-          {view === "dashboard" && (
-            <section className="dashboard" id="admin">
-              {/* Dashboard heading */}
-              <div className="dashboard-topbar">
-                <div>
-                  <p className="section-kicker">Member care desk</p>
-                  <h2>Registered participants</h2>
-                </div>
-
-                <div className="dashboard-actions">
-                  <button
-                    type="button"
-                    onClick={() => void loadMembers(token)}
-                  >
-                    Refresh data
-                  </button>
-
-                  <button
-                    className="logout-button"
-                    type="button"
-                    onClick={logout}
-                  >
-                    Sign out <span>↗</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Admin navigation tabs */}
-              <div className="admin-tabs" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={adminTab === "members"}
-                  className={adminTab === "members" ? "active" : ""}
-                  onClick={() => setAdminTab("members")}
-                >
-                  Member records
-                </button>
-
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={adminTab === "seating"}
-                  className={adminTab === "seating" ? "active" : ""}
-                  onClick={() => setAdminTab("seating")}
-                >
-                  Seating & reminders
-                </button>
-              </div>
-
-              {/* Existing member-records tab */}
-              {adminTab === "members" && (
-                <>
-                  <div className="stats-grid">
-                    {/* Move your three existing stat cards here */}
-                  </div>
-
-                  <div className="directory-panel">
-                    {/* Move your existing Member records table here */}
-                  </div>
-                </>
-              )}
-
               {/* New seating and reminders tab */}
               {adminTab === "seating" && (
                 <div className="directory-panel seating-panel">
@@ -1124,8 +1060,6 @@ export default function Home() {
               )}
             </section>
           )}
-        </section>
-      )}
 
       <footer className="site-footer">
         <p>Future Generation Conference. &copy; 2026</p>
