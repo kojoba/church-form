@@ -262,10 +262,21 @@ export default function Home() {
         );
       }
 
+      const seatCode =
+        payload.seat_code ??
+        payload.data?.seat?.seat_code ??
+        payload.data?.church_member_seats?.[0]?.seat_code;
+
       setStatus("success");
+
       setMessage(
-        "Registration received. We look forward to welcoming you to FGC 2026.",
+        seatCode
+          ? `Registration completed successfully. Your seat code is ${seatCode}. Please save or screenshot this code.`
+          : payload.message ||
+              "Registration completed successfully. Your seat assignment is being prepared.",
       );
+
+      setForm(EMPTY_FORM);
       setForm(EMPTY_FORM);
     } catch (error) {
       setStatus("error");
