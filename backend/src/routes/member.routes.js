@@ -17,45 +17,30 @@ import {
 
 const router = express.Router();
 
-// Public registration routes
 router.post("/check-duplicate", getDuplicate);
 router.post("/", createMember);
 
-// Protected admin routes
-router.get(
-  "/",
-  authenticateAdmin,
-  getMembers
-);
-
-router.get(
-  "/seating-chart",
-  authenticateAdmin,
-  getSeatingChart
-);
+router.get("/", authenticateAdmin, getMembers);
+router.get("/seating-chart", authenticateAdmin, getSeatingChart);
 
 router.post(
   "/:id/assign-seat",
   authenticateAdmin,
-  assignMemberSeat
+  assignMemberSeat,
 );
 
 router.delete(
   "/:id/seat",
   authenticateAdmin,
-  releaseMemberSeat
+  releaseMemberSeat,
 );
 
 router.post(
   "/:id/send-reminder",
   authenticateAdmin,
-  sendMemberReminder
+  sendMemberReminder,
 );
 
-router.get(
-  "/:id",
-  authenticateAdmin,
-  getMemberById
-);
+router.get("/:id", authenticateAdmin, getMemberById);
 
 export default router;
