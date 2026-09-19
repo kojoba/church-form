@@ -12,7 +12,7 @@ import {
 } from "../controllers/member.controller.js";
 
 import {
-  authenticateAdmin,
+  authenticateToken,
 } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -20,27 +20,27 @@ const router = express.Router();
 router.post("/check-duplicate", getDuplicate);
 router.post("/", createMember);
 
-router.get("/", authenticateAdmin, getMembers);
-router.get("/seating-chart", authenticateAdmin, getSeatingChart);
+router.get("/", authenticateToken, getMembers);
+router.get("/seating-chart", authenticateToken, getSeatingChart);
 
 router.post(
   "/:id/assign-seat",
-  authenticateAdmin,
+  authenticateToken,
   assignMemberSeat,
 );
 
 router.delete(
   "/:id/seat",
-  authenticateAdmin,
+  authenticateToken,
   releaseMemberSeat,
 );
 
 router.post(
   "/:id/send-reminder",
-  authenticateAdmin,
+  authenticateToken,
   sendMemberReminder,
 );
 
-router.get("/:id", authenticateAdmin, getMemberById);
+router.get("/:id", authenticateToken, getMemberById);
 
 export default router;
