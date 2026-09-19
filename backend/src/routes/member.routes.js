@@ -7,37 +7,54 @@ import {
   getDuplicate,
   getSeatingChart,
   sendMemberReminder,
+  assignMemberSeat,
+  releaseMemberSeat,
 } from "../controllers/member.controller.js";
 
-import { authenticateToken } from "../middleware/auth.middleware.js";
+import {
+  authenticateAdmin,
+} from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 // Public registration routes
 router.post("/check-duplicate", getDuplicate);
 router.post("/", createMember);
-router.post("/:id/send-reminder", authenticateToken, sendMemberReminder);
 
-// Protected administrative routes
-router.get("/seating-chart", authenticateToken, getSeatingChart);
-router.get("/", authenticateToken, getMembers);
-router.get("/:id", authenticateToken, getMemberById);
-
-router.get(
-  "/seating-chart",
-  authenticateToken,
-  getSeatingChart
-);
-
+// Protected admin routes
 router.get(
   "/",
-  authenticateToken,
+  authenticateAdmin,
   getMembers
 );
 
 router.get(
+  "/seating-chart",
+  authenticateAdmin,
+  getSeatingChart
+);
+
+router.post(
+  "/:id/assign-seat",
+  authenticateAdmin,
+  assignMemberSeat
+);
+
+router.delete(
+  "/:id/seat",
+  authenticateAdmin,
+  releaseMemberSeat
+);
+
+router.post(
+  "/:id/send-reminder",
+  authenticateAdmin,
+  sendMemberReminder
+);
+
+router.get(
   "/:id",
-  authenticateToken,
+  authenticateAdmin,
   getMemberById
 );
 

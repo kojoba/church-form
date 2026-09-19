@@ -44,9 +44,12 @@ type FormState = {
 };
 
 type SeatAssignment = {
+  id: number;
   seat_code: string;
-  seat_group: string;
+  column_number: number;
+  lane_number: number;
   seat_number: number;
+  assignment_order: number;
   assigned_at: string;
 };
 
@@ -61,7 +64,10 @@ type Member = {
   seat?: SeatAssignment | SeatAssignment[] | null;
 };
 
-type AdminTab = "members" | "seating";
+type AdminTab =
+  | "members"
+  | "assign-seat"
+  | "seating";
 
 type ReminderResult = {
   status: "sending" | "sent" | "error";
@@ -69,6 +75,12 @@ type ReminderResult = {
 };
 
 type View = "register" | "login" | "dashboard";
+
+type SeatActionStatus =
+  | "idle"
+  | "assigning"
+  | "success"
+  | "error";
 
 const EMPTY_FORM: FormState = {
   full_name: "",
@@ -115,6 +127,15 @@ export default function Home() {
   const [educationFilter, setEducationFilter] = useState("All levels");
   const [adminTab, setAdminTab] = useState<AdminTab>("members");
   const [reminderResults, setReminderResults] = useState<Record<number, ReminderResult>>({});
+  const [seatSearch, setSeatSearch] = useState("");
+  const [selectedMemberId, setSelectedMemberId] =
+    useState<number | null>(null);
+
+  const [seatActionStatus, setSeatActionStatus] =
+    useState<SeatActionStatus>("idle");
+
+  const [seatActionMessage, setSeatActionMessage] =
+    useState("");
 
   const completedFields = useMemo(
     () =>
@@ -162,6 +183,40 @@ export default function Home() {
           }),
       [members]
     );
+
+    const assignmentMatches = useMemo(() => {
+      const query = seatSearch.trim().toLowerCase();
+
+      if (query.length < 2 || selectedMemberId !== null) {
+        return [];
+      }
+
+      return members
+        .filter(
+          (member) =>
+            member.full_name.toLowerCase().includes(query) ||
+            member.contact_number.toLowerCase().includes(query) ||
+            (member.email ?? "").toLowerCase().includes(query),
+        )
+        .sort((firstMember, secondMember) =>
+          firstMember.full_name.localeCompare(
+            secondMember.full_name,
+          ),
+        )
+        .slice(0, 8);
+    }, [members, seatSearch, selectedMemberId]);
+
+    const selectedMember = useMemo(
+      () =>
+        members.find(
+          (member) => member.id === selectedMemberId,
+        ) ?? null,
+      [members, selectedMemberId],
+    );
+
+    const selectedMemberSeat = selectedMember
+      ? getMemberSeat(selectedMember)
+      : null;
 
     async function sendReminder(member: Member) {
       if (!member.email) {
@@ -237,6 +292,90 @@ export default function Home() {
       }
     }
 
+    async function assignSeat() {
+      if (!selectedMember) {
+        setSeatActionStatus("error");
+        setSeatActionMessage(
+          "Select a registered participant first.",
+        );
+        return;
+      }
+
+      const accessToken =
+        token ||
+        sessionStorage.getItem("church_admin_token") ||
+        "";
+
+      if (!accessToken) {
+        setView("login");
+        return;
+      }
+
+      setSeatActionStatus("assigning");
+      setSeatActionMessage("");
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/members/${selectedMember.id}/assign-seat`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
+
+        const payload = await response.json();
+
+        if (response.status === 401) {
+          sessionStorage.removeItem("church_admin_token");
+          setToken("");
+          setView("login");
+          setLoginStatus("error");
+          setLoginMessage(
+            "Your session has expired. Please sign in again.",
+          );
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            payload.message || "Unable to assign a seat.",
+          );
+        }
+
+        const assignedSeat =
+          payload.data?.seat as SeatAssignment | undefined;
+
+        if (!assignedSeat?.seat_code) {
+          throw new Error(
+            "The server did not return an assigned seat.",
+          );
+        }
+
+        setMembers((currentMembers) =>
+          currentMembers.map((member) =>
+            member.id === selectedMember.id
+              ? {
+                  ...member,
+                  seat: assignedSeat,
+                }
+              : member,
+          ),
+        );
+
+        setSeatActionStatus("success");
+        setSeatActionMessage(payload.message);
+      } catch (error) {
+        setSeatActionStatus("error");
+        setSeatActionMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to assign a seat.",
+        );
+      }
+    }
+
   async function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
@@ -262,19 +401,14 @@ export default function Home() {
         );
       }
 
-      const seatCode =
-        payload.seat_code ??
-        payload.data?.seat?.seat_code ??
-        payload.data?.church_member_seats?.[0]?.seat_code;
-
       setStatus("success");
 
       setMessage(
-        seatCode
-          ? `Registration completed successfully. Your seat code is ${seatCode}. Please save or screenshot this code.`
-          : payload.message ||
-              "Registration completed successfully. Your seat assignment is being prepared.",
+        payload.message ||
+          "Registration completed successfully. Your seat will be assigned when you arrive at the conference.",
       );
+
+      setForm(EMPTY_FORM);
 
       setForm(EMPTY_FORM);
     } catch (error) {
@@ -808,6 +942,18 @@ export default function Home() {
             <button
               type="button"
               role="tab"
+              aria-selected={adminTab === "assign-seat"}
+              className={
+                adminTab === "assign-seat" ? "active" : ""
+              }
+              onClick={() => setAdminTab("assign-seat")}
+            >
+              Assign seating
+            </button>
+
+            <button
+              type="button"
+              role="tab"
               aria-selected={adminTab === "seating"}
               className={adminTab === "seating" ? "active" : ""}
               onClick={() => setAdminTab("seating")}
@@ -943,6 +1089,188 @@ export default function Home() {
             </>
           )}
 
+          {adminTab === "assign-seat" && (
+            <div className="directory-panel assignment-panel">
+              <div className="directory-toolbar">
+                <div>
+                  <h2>Assign participant seating</h2>
+                  <p>
+                    Search for a registered participant and assign
+                    the next available seat.
+                  </p>
+                </div>
+
+                <span className="assignment-count">
+                  {seatedMembers.length} / 288 assigned
+                </span>
+              </div>
+
+              <div className="assignment-content">
+                <label className="assignment-search">
+                  <span>Participant name</span>
+
+                  <input
+                    type="search"
+                    value={seatSearch}
+                    placeholder="Start typing a participant's name"
+                    autoComplete="off"
+                    onChange={(event) => {
+                      setSeatSearch(event.target.value);
+                      setSelectedMemberId(null);
+                      setSeatActionStatus("idle");
+                      setSeatActionMessage("");
+                    }}
+                  />
+                </label>
+
+                {assignmentMatches.length > 0 && (
+                  <div
+                    className="assignment-suggestions"
+                    role="listbox"
+                  >
+                    {assignmentMatches.map((member) => {
+                      const existingSeat = getMemberSeat(member);
+
+                      return (
+                        <button
+                          type="button"
+                          role="option"
+                          className="assignment-suggestion"
+                          key={member.id}
+                          onClick={() => {
+                            setSelectedMemberId(member.id);
+                            setSeatSearch(member.full_name);
+                            setSeatActionStatus("idle");
+                            setSeatActionMessage("");
+                          }}
+                        >
+                          <span className="member-avatar">
+                            {initials(member.full_name)}
+                          </span>
+
+                          <span className="suggestion-identity">
+                            <strong>{member.full_name}</strong>
+
+                            <small>
+                              {member.contact_number}
+                              {member.email
+                                ? ` · ${member.email}`
+                                : ""}
+                            </small>
+                          </span>
+
+                          {existingSeat && (
+                            <span className="already-seated">
+                              {existingSeat.seat_code}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {seatSearch.trim().length >= 2 &&
+                  selectedMemberId === null &&
+                  assignmentMatches.length === 0 && (
+                    <div className="participant-not-found">
+                      <strong>No registered participant found</strong>
+
+                      <p>
+                        Confirm the spelling or ask the participant
+                        to complete the registration form.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => setView("register")}
+                      >
+                        Open registration form
+                      </button>
+                    </div>
+                  )}
+
+                {selectedMember && (
+                  <div className="selected-participant">
+                    <div className="selected-participant-header">
+                      <span className="member-avatar">
+                        {initials(selectedMember.full_name)}
+                      </span>
+
+                      <div>
+                        <small>Selected participant</small>
+                        <strong>{selectedMember.full_name}</strong>
+                      </div>
+                    </div>
+
+                    <dl className="participant-details">
+                      <div>
+                        <dt>Contact</dt>
+                        <dd>{selectedMember.contact_number}</dd>
+                      </div>
+
+                      <div>
+                        <dt>Email</dt>
+                        <dd>
+                          {selectedMember.email ||
+                            "No email provided"}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Education</dt>
+                        <dd>{selectedMember.education_level}</dd>
+                      </div>
+                    </dl>
+
+                    {selectedMemberSeat ? (
+                      <div className="existing-seat-result">
+                        <span>Already assigned</span>
+
+                        <strong>
+                          {selectedMemberSeat.seat_code}
+                        </strong>
+
+                        <small>
+                          Column{" "}
+                          {selectedMemberSeat.column_number},
+                          Lane {selectedMemberSeat.lane_number},
+                          Seat {selectedMemberSeat.seat_number}
+                        </small>
+                      </div>
+                    ) : (
+                      <button
+                        className="assign-seat-button"
+                        type="button"
+                        disabled={
+                          seatActionStatus === "assigning"
+                        }
+                        onClick={() => void assignSeat()}
+                      >
+                        {seatActionStatus === "assigning"
+                          ? "Assigning seat…"
+                          : "Assign next available seat"}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {seatActionMessage && (
+                  <div
+                    className={`seat-action-message ${seatActionStatus}`}
+                    role={
+                      seatActionStatus === "error"
+                        ? "alert"
+                        : "status"
+                    }
+                  >
+                    {seatActionMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
               {/* New seating and reminders tab */}
               {adminTab === "seating" && (
                 <div className="directory-panel seating-panel">
@@ -963,8 +1291,8 @@ export default function Home() {
                     <div className="directory-state">
                       <strong>No seat assignments found</strong>
                       <p>
-                        Confirm that the seat migration and database
-                        trigger have been created.
+                        No registered participants have been assigned
+                        seats at the venue yet.
                       </p>
                     </div>
                   ) : (

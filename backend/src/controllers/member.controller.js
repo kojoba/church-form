@@ -144,9 +144,16 @@ async function findExistingMember(memberData) {
 async function getMemberSeat(memberId) {
   const { data, error } = await supabase
     .from("church_member_seats")
-    .select(
-      "id, member_id, seat_code, seat_group, seat_number, assigned_at"
-    )
+    .select(`
+      id,
+      member_id,
+      seat_code,
+      column_number,
+      lane_number,
+      seat_number,
+      assignment_order,
+      assigned_at
+    `)
     .eq("member_id", memberId)
     .maybeSingle();
 
@@ -157,15 +164,12 @@ async function getMemberSeat(memberId) {
   return data;
 }
 
-function sendDuplicateResponse(res, seat) {
+function sendDuplicateResponse(res) {
   return res.status(409).json({
     success: false,
     duplicate: true,
-    message: seat
-      ? `You have already registered for FGC 2026. Your seat code is ${seat.seat_code}.`
-      : "You have already registered for FGC 2026.",
-    seat_code: seat?.seat_code ?? null,
-    seat: seat ?? null,
+    message:
+      "You have already registered for FGC 2026. You do not need to register again.",
   });
 }
 
@@ -196,9 +200,7 @@ export async function createMember(req, res) {
       await findExistingMember(memberData);
 
     if (existingMember) {
-      const seat = await getMemberSeat(existingMember.id);
-
-      return sendDuplicateResponse(res, seat);
+      return sendDuplicateResponse(res);
     }
 
     const { data: member, error: insertError } =
@@ -218,11 +220,7 @@ export async function createMember(req, res) {
           await findExistingMember(memberData);
 
         if (duplicatedMember) {
-          const seat = await getMemberSeat(
-            duplicatedMember.id
-          );
-
-          return sendDuplicateResponse(res, seat);
+          return sendDuplicateResponse(res);
         }
       }
 
@@ -233,24 +231,12 @@ export async function createMember(req, res) {
      * The database trigger creates the seat assignment
      * after inserting the member.
      */
-    const seat = await getMemberSeat(member.id);
-
-    if (!seat) {
-      throw new Error(
-        `No seat assignment was created for member ${member.id}.`
-      );
-    }
 
     return res.status(201).json({
       success: true,
       message:
-        `Registration completed successfully. ` +
-        `Your seat code is ${seat.seat_code}.`,
-      seat_code: seat.seat_code,
-      data: {
-        ...member,
-        seat,
-      },
+        "Registration completed successfully. Your seat will be assigned when you arrive at the conference.",
+      data: member,
     });
   } catch (error) {
     console.error("Member registration error:", error);
@@ -304,16 +290,11 @@ export async function getDuplicate(req, res) {
       });
     }
 
-    const seat = await getMemberSeat(existingMember.id);
-
     return res.status(200).json({
       success: true,
       duplicate: true,
-      seat_code: seat?.seat_code ?? null,
-      seat: seat ?? null,
-      message: seat
-        ? `You have already registered for FGC 2026. Your seat code is ${seat.seat_code}.`
-        : "You have already registered for FGC 2026.",
+      message:
+        "You have already registered for FGC 2026. You do not need to register again.",
     });
   } catch (error) {
     console.error("Duplicate check error:", error);
@@ -332,10 +313,13 @@ export async function getMembers(req, res) {
       .from("church_members")
       .select(`
         *,
-        seat:church_member_seats (
+        seat:church_member_seats!fgc_live_seats_member_fkey (
+          id,
           seat_code,
-          seat_group,
+          column_number,
+          lane_number,
           seat_number,
+          assignment_order,
           assigned_at
         )
       `)
@@ -361,24 +345,30 @@ export async function getMembers(req, res) {
 }
 
 // GET /api/members/seating-chart
+// GET /api/members/seating-chart
 export async function getSeatingChart(req, res) {
   try {
     const { data, error } = await supabase
       .from("church_member_seats")
       .select(`
+        id,
         seat_code,
-        seat_group,
+        column_number,
+        lane_number,
         seat_number,
+        assignment_order,
         assigned_at,
-        member:church_members (
+        member:church_members!fgc_live_seats_member_fkey (
           id,
           full_name,
-          education_level,
           contact_number,
-          email
+          email,
+          education_level
         )
       `)
-      .order("seat_number", { ascending: true });
+      .order("assignment_order", {
+        ascending: true,
+      });
 
     if (error) {
       throw error;
@@ -386,25 +376,54 @@ export async function getSeatingChart(req, res) {
 
     const seats = data ?? [];
 
-    const seatingChart = SEAT_GROUPS.map((group) => ({
-      seat_group: group.code,
-      education_group: group.label,
-      count: seats.filter(
-        (seat) => seat.seat_group === group.code
-      ).length,
-      seats: seats
-        .filter((seat) => seat.seat_group === group.code)
-        .sort(
-          (firstSeat, secondSeat) =>
-            firstSeat.seat_number -
-            secondSeat.seat_number
-        ),
-    }));
+    const columns = Array.from(
+      { length: 4 },
+      (_, columnIndex) => {
+        const columnNumber = columnIndex + 1;
+
+        const columnSeats = seats.filter(
+          (seat) =>
+            seat.column_number === columnNumber
+        );
+
+        return {
+          column_number: columnNumber,
+          total: columnSeats.length,
+          assigned: columnSeats.filter(
+            (seat) => Boolean(seat.member)
+          ).length,
+          available: columnSeats.filter(
+            (seat) => !seat.member
+          ).length,
+
+          lanes: Array.from(
+            { length: 12 },
+            (_, laneIndex) => {
+              const laneNumber = laneIndex + 1;
+
+              return {
+                lane_number: laneNumber,
+                seats: columnSeats.filter(
+                  (seat) =>
+                    seat.lane_number === laneNumber
+                ),
+              };
+            }
+          ),
+        };
+      }
+    );
 
     return res.status(200).json({
       success: true,
-      total: seats.length,
-      data: seatingChart,
+      total_seats: seats.length,
+      assigned_seats: seats.filter(
+        (seat) => Boolean(seat.member)
+      ).length,
+      available_seats: seats.filter(
+        (seat) => !seat.member
+      ).length,
+      data: columns,
     });
   } catch (error) {
     console.error("Get seating chart error:", error);
@@ -432,10 +451,13 @@ export async function getMemberById(req, res) {
       .from("church_members")
       .select(`
         *,
-        seat:church_member_seats (
+        seat:church_member_seats!fgc_live_seats_member_fkey (
+          id,
           seat_code,
-          seat_group,
+          column_number,
+          lane_number,
           seat_number,
+          assignment_order,
           assigned_at
         )
       `)
@@ -486,10 +508,13 @@ export async function sendMemberReminder(req, res) {
         full_name,
         email,
         education_level,
-        seat:church_member_seats (
+        seat:church_member_seats!fgc_live_seats_member_fkey (
           seat_code,
-          seat_group,
-          seat_number
+          column_number,
+          lane_number,
+          seat_number,
+          assignment_order,
+          assigned_at
         )
       `)
       .eq("id", memberId)
@@ -605,4 +630,180 @@ Future Generation Conference Team
         message: "Unable to send the reminder email.",
       });
     }
+}
+
+// POST /api/members/:id/assign-seat
+export async function assignMemberSeat(req, res) {
+  try {
+    const memberId = Number(req.params.id);
+
+    if (!Number.isInteger(memberId) || memberId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid member ID.",
+      });
+    }
+
+    const { data: member, error: memberError } =
+      await supabase
+        .from("church_members")
+        .select(`
+          id,
+          full_name,
+          contact_number,
+          email,
+          education_level
+        `)
+        .eq("id", memberId)
+        .maybeSingle();
+
+    if (memberError) {
+      throw memberError;
+    }
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "This participant is not registered. Please ask them to complete the registration form.",
+      });
+    }
+
+    const { data: allocation, error: allocationError } =
+      await supabase.rpc("assign_next_fgc_seat", {
+        p_member_id: memberId,
+      });
+
+    if (allocationError) {
+      const databaseMessage = [
+        allocationError.message,
+        allocationError.details,
+        allocationError.hint,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      if (
+        databaseMessage.includes(
+          "ALL_CONFERENCE_SEATS_ASSIGNED"
+        )
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "All 288 conference seats have already been assigned.",
+        });
+      }
+
+      if (
+        databaseMessage.includes(
+          "REGISTERED_MEMBER_NOT_FOUND"
+        )
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "This participant is not registered.",
+        });
+      }
+
+      throw allocationError;
+    }
+
+    const seat = allocation?.seat;
+    const alreadyAssigned =
+      allocation?.already_assigned === true;
+
+    if (!seat?.seat_code) {
+      throw new Error(
+        "The database did not return an assigned seat."
+      );
+    }
+
+    return res
+      .status(alreadyAssigned ? 200 : 201)
+      .json({
+        success: true,
+        already_assigned: alreadyAssigned,
+        message: alreadyAssigned
+          ? `${member.full_name} already has seat ${seat.seat_code}.`
+          : `${seat.seat_code} has been assigned to ${member.full_name}.`,
+        seat_code: seat.seat_code,
+        data: {
+          member,
+          seat,
+        },
+      });
+  } catch (error) {
+    console.error("Assign seat error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to assign a seat.",
+    });
+  }
+}
+
+// DELETE /api/members/:id/seat
+export async function releaseMemberSeat(req, res) {
+  try {
+    const memberId = Number(req.params.id);
+
+    if (!Number.isInteger(memberId) || memberId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid member ID.",
+      });
+    }
+
+    const { data: member, error: memberError } =
+      await supabase
+        .from("church_members")
+        .select("id, full_name")
+        .eq("id", memberId)
+        .maybeSingle();
+
+    if (memberError) {
+      throw memberError;
+    }
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: "Registered participant not found.",
+      });
+    }
+
+    const { data: result, error } =
+      await supabase.rpc("release_fgc_seat", {
+        p_member_id: memberId,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!result?.success) {
+      return res.status(409).json({
+        success: false,
+        message:
+          result?.message ||
+          "This participant does not have an assigned seat.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${member.full_name}'s seat has been released.`,
+      released_seat_code:
+        result.seat?.seat_code ?? null,
+    });
+  } catch (error) {
+    console.error("Release seat error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to release the seat.",
+    });
+  }
 }
